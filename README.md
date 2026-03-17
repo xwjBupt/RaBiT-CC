@@ -119,20 +119,6 @@ python train.py \
 
 ```
 
-## Cite our work📝
-
-If you find this code useful for your research, please cite our paper:
-
-```bibtex
-@article{zhou2026rabit,
-  title={RaBiT-CC: Reliability-Aware Bidirectional Tri-Attention for RGB-T Crowd Counting},
-  author={Zhou, Fengyu and others},
-  journal={Submitted to IEEE Signal Processing Letters},
-  year={2026}
-}
-
-```
-
 ## License📜
 
 This source code is licensed for research and education use only. Commercial use is strictly prohibited without prior written permission from the authors.
