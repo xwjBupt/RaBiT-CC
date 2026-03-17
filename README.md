@@ -112,7 +112,7 @@ To start training on the RGBT-CC dataset, run:
 python train.py \
     --dataset RGBTCC \
     --data-dir ./data/RGBT-CC \
-    --batch-size 2 \
+    --batch-size 8 \
     --lr 1e-5 \
     --device 0 \
     --exp-tag rabbit_rgbtcc
