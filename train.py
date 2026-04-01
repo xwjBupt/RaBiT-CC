@@ -1,4 +1,3 @@
-from utils.regression_trainer import RegTrainer
 import argparse
 import os
 import torch
@@ -7,19 +6,21 @@ import numpy as np
 import torch.nn as nn
 from torch.utils.data import DataLoader
 from torchvision import transforms
-
+import os
+from utils.regression_trainer import RegTrainer
 args = None
 
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Train ')
-    parser.add_argument('--exp-tag', default='',
+    parser.add_argument('--exp-tag', default='rabbit_rgbtcc',
                         help='the tag of the experiment')
     parser.add_argument('--dataset', default='RGBTCC', choices=['RGBTCC', 'DroneRGBT'],
                         help='the dataset to train, RGBTCC or DroneRGBT')
-    parser.add_argument('--data-dir', default='./data/RGBT-CC',
+    parser.add_argument('--data-dir', default='/home/wjx/data/CrowdCounting/RGBTCC_Pro',
                         help='training data directory')
-    parser.add_argument('--save-dir', default='./output',
+    root = os.path.dirname(os.path.realpath(__file__))+'/output'
+    parser.add_argument('--save-dir', default=root,
                         help='directory to save models.')
     parser.add_argument('--lr', type=float, default=1e-5,
                         help='the initial learning rate')
@@ -48,7 +49,7 @@ def parse_args():
                         help='max training epoch')
     parser.add_argument('--val-epoch', type=int, default=1,
                         help='the num of steps to val')
-    parser.add_argument('--val-start', type=int, default=20,
+    parser.add_argument('--val-start', type=int, default=5,
                         help='the epoch start to val')
     parser.add_argument('--test-epoch', type=int, default=1,
                         help='the num of steps to test')
@@ -56,7 +57,7 @@ def parse_args():
                         help='the epoch start to test')
     parser.add_argument('--save-all-best', type=bool, default=True,
                         help='whether to load opt state')
-    parser.add_argument('--batch-size', type=int, default=2,
+    parser.add_argument('--batch-size', type=int, default=32,
                         help='train batch size')
     parser.add_argument('--num-workers', type=int, default=8,
                         help='the num of training process')
@@ -85,7 +86,7 @@ if __name__ == '__main__':
     args = parse_args()
     set_seed(args.seed)
     torch.backends.cudnn.benchmark = True
-    os.environ['CUDA_VISIBLE_DEVICES'] = args.device.strip()  # set vis gpu
+    os.environ['CUDA_VISIBLE_DEVICES'] = args.device  # set vis gpu
     trainer = RegTrainer(args)
     trainer.setup()
     trainer.train()

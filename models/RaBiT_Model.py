@@ -31,8 +31,8 @@ class RaBiT_CC(nn.Module):
         self.upsample = cus_sample      
         
         # -------------------- Backbone (PVT) --------------------
-        self.pvt_backbone_rgb = pvt_v2_b3 (pretrained="pretrained_weights/pvt_v2_b3.pth")
-        self.pvt_backbone_t   = pvt_v2_b3 (pretrained="pretrained_weights/pvt_v2_b3.pth")
+        self.pvt_backbone_rgb = pvt_v2_b3 (pretrained="/home/wjx/code/RaBiT-CC/pretrained_weights/pvt_v2_b3.pth")
+        self.pvt_backbone_t   = pvt_v2_b3 (pretrained="/home/wjx/code/RaBiT-CC/pretrained_weights/pvt_v2_b3.pth")
         
         # Adjust the number of output channels
         self.trans_rgb_32x = BasicConv2d(512, 64, 1)

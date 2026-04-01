@@ -21,7 +21,7 @@ from losses.bay_loss import Bay_Loss
 from losses.post_prob import Post_Prob
 from losses.bpl import BPL_Loss
 from models.RaBiT_Model import fusion_model
-
+from tqdm import tqdm
 
 def train_collate(batch):
     transposed_batch = list(zip(*batch))
@@ -185,7 +185,7 @@ class RegTrainer(Trainer):
         epoch_start = time.time()
         self.model.train()  
 
-        for step, (inputs, points, st_sizes) in enumerate(self.dataloaders['train']):
+        for step, (inputs, points, st_sizes) in tqdm(enumerate(self.dataloaders['train'])):
 
             if type(inputs) == list:
                 inputs[0] = inputs[0].to(self.device)
@@ -275,7 +275,7 @@ class RegTrainer(Trainer):
         mse = [0, 0, 0, 0]
         total_relative_error = 0
 
-        for inputs, target, name in self.dataloaders['val']:
+        for inputs, target, name in tqdm(self.dataloaders['val']):
             if type(inputs) == list:
                 inputs[0] = inputs[0].to(self.device)
                 inputs[1] = inputs[1].to(self.device)

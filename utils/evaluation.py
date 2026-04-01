@@ -2,10 +2,10 @@ import cv2
 
 
 def eval_game(output, target, L=0):
-    output = output[0][0].cpu().numpy()
+    output = output[0][0][0].cpu().numpy()
     target = target[0]
     H, W = target.shape
-    ratio = H / output.shape[0]
+    ratio = H / output.shape[1]
     output = cv2.resize(output, (W, H), interpolation=cv2.INTER_CUBIC) / (ratio*ratio)
 
     assert output.shape == target.shape
@@ -26,7 +26,13 @@ def eval_game(output, target, L=0):
 
 
 def eval_relative(output, target):
-    output_num = output.cpu().data.sum()
+    # output_num = output.cpu().data.sum()
+    if not isinstance(output,list) and not isinstance(output,tuple):
+        output_num = output.cpu().data.sum()
+    else:
+        output_num = 0
+        for i in output:
+            output_num = output_num+i.cpu().sum().item()
     target_num = target.sum().float()
     relative_error = abs(output_num-target_num)/target_num
     return relative_error

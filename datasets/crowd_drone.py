@@ -32,14 +32,14 @@ def parse_xml_points(xml_path):
 
 
 class Crowd_Drone(data.Dataset):
-    def __init__(self, root_path, crop_size=256,
+    def __init__(self, root_path = '/home/wjx/data/CrowdCounting/DroneRGBT', crop_size=256,
                  downsample_ratio=8,
                  method='train'):
 
         self.root_path = root_path
 
         self.gt_list = sorted(glob(os.path.join(self.root_path, 'GT_', '*.xml')))
-        if method not in ['train', 'val', 'test']:
+        if method not in ['Train', 'Val', 'Test']:
             raise Exception(f"method {method} not implement")
         self.method = method
 

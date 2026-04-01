@@ -3,7 +3,7 @@ import shutil
 import numpy as np
 import json
 from glob import glob
-
+from tqdm import tqdm
 # This file is used to preprocess the RGBT-CC dataset, converting the original data format to the format used in the project.
 
 def generate_data(label_path):
@@ -13,10 +13,10 @@ def generate_data(label_path):
 
     return points
 
-
+'''only support RGBTCC'''
 if __name__ == '__main__':
-    root_path = 'RGBT-CC-CVPR2021'  # The path to the original dataset root directory
-    save_dir = 'data/RGBT_CC'    # The path to save the generated data
+    root_path = '/home/wjx/data/CrowdCounting/DroneRGBT'  # The path to the original dataset root directory
+    save_dir = '/home/wjx/data/CrowdCounting/DroneRGBT_Pro'    # The path to save the generated data
 
     for phase in ['train', 'val', 'test']:
         sub_dir = os.path.join(root_path, phase)
@@ -24,7 +24,7 @@ if __name__ == '__main__':
         os.makedirs(sub_save_dir, exist_ok=True)
 
         gt_list = glob(os.path.join(sub_dir, '*json'))
-        for gt_path in gt_list:
+        for gt_path in tqdm(gt_list):
             name = os.path.basename(gt_path)
             im_save_path = os.path.join(sub_save_dir, name)
             rgb_save_path = im_save_path.replace('GT', 'RGB').replace('json', 'jpg')
@@ -40,3 +40,4 @@ if __name__ == '__main__':
             # Save the generated npy file
             points = generate_data(gt_path)
             np.save(gd_save_path, points)
+    print ('DONE')

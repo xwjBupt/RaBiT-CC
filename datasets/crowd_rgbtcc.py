@@ -17,7 +17,7 @@ def random_crop(im_h, im_w, crop_h, crop_w):
 
 
 class Crowd_RGBTCC(data.Dataset):
-    def __init__(self, root_path, crop_size=256,
+    def __init__(self, root_path = '/home/wjx/data/CrowdCounting/RGBTCC_Pro', crop_size=256,
                  downsample_ratio=8,
                  method='train'):
 
