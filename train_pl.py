@@ -7,6 +7,7 @@ from pytorch_lightning.callbacks import ModelCheckpoint, LearningRateMonitor
 from pytorch_lightning.loggers import TensorBoardLogger
 from loguru import logger
 from pytorch_lightning.strategies import DDPStrategy
+import subprocess  # <--- 新增：用于执行系统命令
 
 # === 激活 Ampere/Ada 架构的 TF32 矩阵乘法加速 (L40 算力解放) ===
 torch.set_float32_matmul_precision('high') 
@@ -48,6 +49,7 @@ def parse_args():
     parser.add_argument('--use-background', type=bool, default=True)
     parser.add_argument('--sigma', type=float, default=8.0)
     parser.add_argument('--background-ratio', type=float, default=0.15)
+    parser.add_argument('--nodebug', action='store_true', help='如果不加此参数，则为debug模式不记录代码；加上则自动进行 git commit')
     
     return parser.parse_args()
 
@@ -70,7 +72,27 @@ if __name__ == '__main__':
             level="INFO",
             enqueue=True 
         )
-    
+        if not args.nodebug:
+            # Debug 模式，使用 warning 级别醒目提示
+            logger.warning("⚠️ [当前为 Debug 模式] 不会对代码进行 Git 记录。")
+        else:
+            logger.info(f"🚀 [非 Debug 模式] 正在进行 Git 代码版本记录 (Commit: {args.exp_tag})...")
+            try:
+                status = subprocess.run(["git", "status", "--porcelain"], capture_output=True, text=True)
+                
+                if status.stdout.strip():
+                    subprocess.run(["git", "add", "."], check=True)
+                    subprocess.run(["git", "commit", "-m", f"Auto-commit [Exp]: {args.exp_tag}"], check=True)
+                    logger.info("✅ Git 代码版本已成功记录！")
+                else:
+                    logger.info("ℹ️ Git 工作区干净，没有需要 Commit 的更改。")
+            except subprocess.CalledProcessError as e:
+                # 使用 error 级别记录异常
+                logger.error(f"❌ Git 记录失败 (可能是没有初始化 Git 或发生冲突)。错误: {e}")
+            except Exception as e:
+                logger.error(f"❌ 发生未知错误，跳过 Git 记录: {e}")
+        # ==========================================================
+
         logger.info(f"======== Starting experiment: {sub_dir} ========")
         logger.info("================ Configurations ================")
         for k, v in args.__dict__.items():
