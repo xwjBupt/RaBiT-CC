@@ -112,7 +112,7 @@ class RegTrainer(Trainer):
         self.optimizer = optim.Adam(params, lr=args.lr, weight_decay=args.weight_decay)
         
         #  ******** You can try to use scheduler or not. **********
-        # self.scheduler = optim.lr_scheduler.MultiStepLR(self.optimizer, milestones=[400, 800, 1200], gamma=0.1)        
+        self.scheduler = optim.lr_scheduler.MultiStepLR(self.optimizer, milestones=[400, 800, 1200], gamma=0.1)        
         
 
         self.start_epoch = 0

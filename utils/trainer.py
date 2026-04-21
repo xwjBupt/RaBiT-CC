@@ -6,7 +6,7 @@ from utils.logger import setlogger
 
 class Trainer(object):
     def __init__(self, args):
-        sub_dir = datetime.strftime(datetime.now(), '%m%d-%H%M%S')  # prepare saving path
+        sub_dir = args.exp_tag+'@'+datetime.strftime(datetime.now(),'%y%m%d-%H%M%S')  # prepare saving path
         self.save_dir = os.path.join(args.save_dir, sub_dir)
         if not os.path.exists(self.save_dir):
             os.makedirs(self.save_dir)

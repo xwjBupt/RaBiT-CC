@@ -22,7 +22,7 @@ def parse_args():
     root = os.path.dirname(os.path.realpath(__file__))+'/output'
     parser.add_argument('--save-dir', default=root,
                         help='directory to save models.')
-    parser.add_argument('--lr', type=float, default=1e-5,
+    parser.add_argument('--lr', type=float, default=3e-5,
                         help='the initial learning rate')
     parser.add_argument('--resume', default='',
                         help='the path of resume training model')
@@ -49,11 +49,11 @@ def parse_args():
                         help='max training epoch')
     parser.add_argument('--val-epoch', type=int, default=1,
                         help='the num of steps to val')
-    parser.add_argument('--val-start', type=int, default=5,
+    parser.add_argument('--val-start', type=int, default=50,
                         help='the epoch start to val')
     parser.add_argument('--test-epoch', type=int, default=1,
                         help='the num of steps to test')
-    parser.add_argument('--test-start', type=int, default=20,
+    parser.add_argument('--test-start', type=int, default=50,
                         help='the epoch start to test')
     parser.add_argument('--save-all-best', type=bool, default=True,
                         help='whether to load opt state')
