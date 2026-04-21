@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 class BPL_Loss(nn.Module):
-    def __init__(self, window_size=16, stride=16, delta=0.5, epsilon=1e-8,downsample_ratio=8.0):
+    def __init__(self, window_size=16, stride=16, delta=0.5, epsilon=1e-8, downsample_ratio=8.0):
     
         super(BPL_Loss, self).__init__()
         self.window_size = window_size

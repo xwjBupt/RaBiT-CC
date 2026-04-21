@@ -2,6 +2,7 @@ import os
 import shutil
 import numpy as np
 import json
+import cv2
 from glob import glob
 from tqdm import tqdm
 # This file is used to preprocess the RGBT-CC dataset, converting the original data format to the format used in the project.
@@ -12,6 +13,11 @@ def generate_data(label_path):
     points = np.asarray(label_file['points'])
 
     return points
+
+# ======= 添加这两行 =======
+cv2.setNumThreads(0)
+cv2.ocl.setUseOpenCL(False)
+# ==========================
 
 '''only support RGBTCC'''
 if __name__ == '__main__':
