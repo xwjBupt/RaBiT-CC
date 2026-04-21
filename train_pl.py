@@ -53,26 +53,29 @@ def parse_args():
 
 if __name__ == '__main__':
     args = parse_args()
-    
+    if "EXP_TIMESTAMP" not in os.environ:
+        os.environ["EXP_TIMESTAMP"] = datetime.now().strftime('%y%m%d-%H%M%S')
+
     # 1. 统一构建输出路径 (保持原有格式: exp_tag@时间戳)
     sub_dir = f"{args.exp_tag}@{datetime.now().strftime('%y%m%d-%H%M%S')}"
     final_save_dir = os.path.join(args.save_dir, sub_dir)
-    os.makedirs(final_save_dir, exist_ok=True)
-
-    # 2. 配置 loguru
-    # enqueue=True 用于确保在 DDP 多卡/多进程模型下日志写入的安全
-    logger.add(
-        os.path.join(final_save_dir, 'train.log'), 
-        format="{time:YYYY-MM-DD HH:mm:ss} | {level} | {message}", 
-        level="INFO",
-        enqueue=True 
-    )
+    local_rank = int(os.environ.get("LOCAL_RANK", 0))
+    if local_rank == 0:
+        os.makedirs(final_save_dir, exist_ok=True)
+        # 2. 配置 loguru
+        # enqueue=True 用于确保在 DDP 多卡/多进程模型下日志写入的安全
+        logger.add(
+            os.path.join(final_save_dir, 'train.log'), 
+            format="{time:YYYY-MM-DD HH:mm:ss} | {level} | {message}", 
+            level="INFO",
+            enqueue=True 
+        )
     
-    logger.info(f"======== Starting experiment: {sub_dir} ========")
-    logger.info("================ Configurations ================")
-    for k, v in args.__dict__.items():
-        logger.info(f"{k}: {v}")
-    logger.info("================================================")
+        logger.info(f"======== Starting experiment: {sub_dir} ========")
+        logger.info("================ Configurations ================")
+        for k, v in args.__dict__.items():
+            logger.info(f"{k}: {v}")
+        logger.info("================================================")
 
     # 3. 设定随机种子和开启 CuDNN benchmark 以提升训练速度
     pl.seed_everything(args.seed, workers=True)
