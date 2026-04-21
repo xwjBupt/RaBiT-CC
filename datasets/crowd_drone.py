@@ -9,7 +9,6 @@ import xml.etree.ElementTree as ET
 from torchvision import transforms
 
 def random_crop(im_h, im_w, crop_h, crop_w):
-
     res_h = im_h - crop_h
     res_w = im_w - crop_w
     i = random.randint(0, res_h)
@@ -18,7 +17,6 @@ def random_crop(im_h, im_w, crop_h, crop_w):
 
 
 def parse_xml_points(xml_path):
-
     tree = ET.parse(xml_path)
     root = tree.getroot()
     points = []
@@ -28,20 +26,24 @@ def parse_xml_points(xml_path):
             x = pt.find('x').text
             y = pt.find('y').text
             points.append([float(x), float(y)])
+            
+    # 【修复 2】：防止出现 0 人头时返回一维数组，强制返回 (0, 2) 的二维空数组
+    if len(points) == 0:
+        return np.zeros((0, 2), dtype=np.float32)
     return np.array(points, dtype=np.float32)
 
 
 class Crowd_Drone(data.Dataset):
-    def __init__(self, root_path = '/home/wjx/data/CrowdCounting/DroneRGBT', crop_size=256,
-                 downsample_ratio=8,
-                 method='train'):
+    def __init__(self, root_path='/home/wjx/data/CrowdCounting/DroneRGBT', crop_size=256,
+                 downsample_ratio=8, method='train'):
 
         self.root_path = root_path
-
         self.gt_list = sorted(glob(os.path.join(self.root_path, 'GT_', '*.xml')))
-        if method not in ['Train', 'Val', 'Test']:
+        
+        # 【修复 1】：统一转为小写，解决大小写冲突 BUG
+        self.method = method.lower()
+        if self.method not in ['train', 'val', 'test']:
             raise Exception(f"method {method} not implement")
-        self.method = method
 
         self.c_size = crop_size
         self.d_ratio = downsample_ratio
@@ -92,7 +94,6 @@ class Crowd_Drone(data.Dataset):
         if self.method == 'train':
             return self.train_transform(RGB, T, keypoints)
         elif self.method == 'val' or self.method == 'test':
-        
             k = np.zeros((T.shape[0], T.shape[1]), dtype=np.float32)
             for (x, y) in keypoints:
                 ix, iy = int(x), int(y)
@@ -111,21 +112,22 @@ class Crowd_Drone(data.Dataset):
             raise Exception(f"Not implement for method: {self.method}")
 
     def train_transform(self, RGB, T, keypoints):
-
         ht, wd, _ = RGB.shape
         st_size = float(min(wd, ht))
-        assert st_size >= self.c_size, "Image size too small for crop size"
-        if len(keypoints) == 0:
-            pass
+        assert st_size >= self.c_size, f"Image size ({wd}x{ht}) too small for crop size {self.c_size}"
 
         i, j, h, w = random_crop(ht, wd, self.c_size, self.c_size)
         RGB = RGB[i:i+h, j:j+w, :]
         T = T[i:i+h, j:j+w, :]
 
-        keypoints = keypoints - [j, i]
-        idx_mask = (keypoints[:, 0] >= 0) & (keypoints[:, 0] <= w) & \
-                   (keypoints[:, 1] >= 0) & (keypoints[:, 1] <= h)
-        keypoints = keypoints[idx_mask]
+        # 【修复 2】：只有在有点的情况下才进行裁剪平移，防止 0 人头报错
+        if len(keypoints) > 0:
+            keypoints = keypoints - [j, i]
+            idx_mask = (keypoints[:, 0] >= 0) & (keypoints[:, 0] <= w) & \
+                       (keypoints[:, 1] >= 0) & (keypoints[:, 1] <= h)
+            keypoints = keypoints[idx_mask]
+        else:
+            keypoints = np.zeros((0, 2), dtype=np.float32)
 
         RGB = self.RGB_transform(RGB)
         T = self.T_transform(T)

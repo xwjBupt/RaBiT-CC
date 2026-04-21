@@ -214,7 +214,10 @@ class CrowdCountingLightningModule(pl.LightningModule):
         if args.dataset == 'RGBTCC':
             self.datasets = {x: Crowd_RGBTCC(os.path.join(args.data_dir, x), args.crop_size, args.downsample_ratio, x) for x in ['train', 'val', 'test']}
         elif args.dataset == 'DroneRGBT':
-            self.datasets = {x: Crowd_Drone(os.path.join(args.data_dir, x), args.crop_size, args.downsample_ratio, x) for x in ['train', 'test']}
+            self.datasets = {
+                'train': Crowd_Drone(os.path.join(args.data_dir, 'Train'), args.crop_size, args.downsample_ratio, 'train'),
+                'test': Crowd_Drone(os.path.join(args.data_dir, 'Test'), args.crop_size, args.downsample_ratio, 'test')
+            }
 
     def train_dataloader(self):
         return DataLoader(self.datasets['train'], collate_fn=train_collate, batch_size=self.args.batch_size, 
