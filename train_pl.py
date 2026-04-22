@@ -70,6 +70,7 @@ if __name__ == '__main__':
 
     # 1. 统一构建输出路径 (保持原有格式: exp_tag@时间戳)
     sub_dir = f"{args.exp_tag}@{datetime.now().strftime('%y%m%d-%H%M%S')}"
+    args.exp_tag = sub_dir
     final_save_dir = os.path.join(root, sub_dir)
     local_rank = int(os.environ.get("LOCAL_RANK", 0))
     if local_rank == 0:
