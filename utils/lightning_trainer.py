@@ -258,3 +258,22 @@ class CrowdCountingLightningModule(pl.LightningModule):
             loaders.append(DataLoader(self.datasets['val'], batch_size=1, shuffle=False, num_workers=self.args.num_workers))
         loaders.append(DataLoader(self.datasets['test'], batch_size=1, shuffle=False, num_workers=self.args.num_workers))
         return loaders
+        
+    # ==================== 新增：训练完全结束时的汇总报告 ====================
+    def on_fit_end(self):
+        """当所有 Epoch 运行完毕后，在日志中打印一次最终汇总"""
+        if self.trainer.is_global_zero and self.best_metrics:
+            exptag = self.args.exp_tag
+            logger.info(" " * 50)
+            logger.info("=" * 25 + " FINAL BEST SUMMARY " + "=" * 25)
+            logger.info(f"Experiment Tag: {exptag}")
+            
+            for stage, best in self.best_metrics.items():
+                logger.info(f"🏆 [Final Best {stage}]")
+                logger.info(f"   - GAME0 (MAE): {best['GAME0']:.3f}")
+                logger.info(f"   - RMSE:        {best['RMSE']:.3f}")
+                logger.info(f"   - RelativeErr: {best['RE']:.4f}")
+                logger.info(f"   - Best at Epoch: {best['epoch']}")
+            
+            logger.info("=" * 70)
+            logger.info(" " * 50)
