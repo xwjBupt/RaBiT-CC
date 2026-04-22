@@ -8,6 +8,8 @@ from pytorch_lightning.loggers import TensorBoardLogger
 from loguru import logger
 from pytorch_lightning.strategies import DDPStrategy
 import subprocess  # <--- 新增：用于执行系统命令
+import torch.distributed as dist
+from pytorch_lightning.callbacks import TQDMProgressBar
 
 # === 激活 Ampere/Ada 架构的 TF32 矩阵乘法加速 (L40 算力解放) ===
 torch.set_float32_matmul_precision('high') 
@@ -15,15 +17,18 @@ torch.set_float32_matmul_precision('high')
 # 导入上面的 LightningModule
 from utils.lightning_trainer import CrowdCountingLightningModule 
 
+# === 新增：自定义纯净版进度条 ===
+class CleanProgressBar(TQDMProgressBar):
+    def get_metrics(self, trainer, model):
+            # 默认会返回各种 loss 和 v_num，我们直接返回空字典，截断所有文字！
+        return {}
+
+
 def parse_args():
     parser = argparse.ArgumentParser(description='Train with PyTorch Lightning')
     parser.add_argument('--exp-tag', default='rabbit_rgbtcc', help='实验标签')
     parser.add_argument('--dataset', default='RGBTCC', choices=['RGBTCC', 'DroneRGBT'])
-    parser.add_argument('--data-dir', default='/home/wjx/data/CrowdCounting/RGBTCC_Pro')
-    
-    root = os.path.dirname(os.path.realpath(__file__)) + '/output'
-    parser.add_argument('--save-dir', default=root, help='保存根目录')
-    
+    parser.add_argument('--data-dir', default='/home/wjx/data/CrowdCounting/RGBTCC_Pro')    
     parser.add_argument('--lr', type=float, default=3e-5)
     parser.add_argument('--resume', default='', help='断点续传路径 (ckpt)')
     
@@ -57,10 +62,15 @@ if __name__ == '__main__':
     args = parse_args()
     if "EXP_TIMESTAMP" not in os.environ:
         os.environ["EXP_TIMESTAMP"] = datetime.now().strftime('%y%m%d-%H%M%S')
+    if args.nodebug:
+        root = os.path.dirname(os.path.realpath(__file__)) + '/output'
+    else:
+        root = os.path.dirname(os.path.realpath(__file__)) + '/output_debug'
+        args.val_start = 1
 
     # 1. 统一构建输出路径 (保持原有格式: exp_tag@时间戳)
     sub_dir = f"{args.exp_tag}@{datetime.now().strftime('%y%m%d-%H%M%S')}"
-    final_save_dir = os.path.join(args.save_dir, sub_dir)
+    final_save_dir = os.path.join(root, sub_dir)
     local_rank = int(os.environ.get("LOCAL_RANK", 0))
     if local_rank == 0:
         os.makedirs(final_save_dir, exist_ok=True)
@@ -108,8 +118,10 @@ if __name__ == '__main__':
     
     # 5. 配置 TensorBoard Logger
     # version='' 使得日志文件直接写在 final_save_dir 目录下
-    tb_logger = TensorBoardLogger(save_dir=args.save_dir, name=sub_dir, version='')
-    
+    tb_logger = TensorBoardLogger(save_dir=final_save_dir, name=sub_dir, version='')
+    # 监控学习率
+    lr_monitor = LearningRateMonitor(logging_interval='epoch')
+
     # 6. 配置 Model Checkpoints，将其直接存入指定的最终目录中
     checkpoint_callbacks = [
         ModelCheckpoint(dirpath=final_save_dir, monitor='Test/GAME0', mode='min', filename='best-game0-{epoch:02d}', save_top_k=1),
@@ -117,12 +129,11 @@ if __name__ == '__main__':
         ModelCheckpoint(dirpath=final_save_dir, monitor='Test/GAME2', mode='min', filename='best-game2-{epoch:02d}', save_top_k=1),
         ModelCheckpoint(dirpath=final_save_dir, monitor='Test/GAME3', mode='min', filename='best-game3-{epoch:02d}', save_top_k=1),
         ModelCheckpoint(dirpath=final_save_dir, monitor='Test/MSE',   mode='min', filename='best-mse-{epoch:02d}', save_top_k=1),
-        ModelCheckpoint(dirpath=final_save_dir, save_last=True) 
+        ModelCheckpoint(dirpath=final_save_dir, save_last=True),
     ]
     
-    # 监控学习率
-    lr_monitor = LearningRateMonitor(logging_interval='epoch')
     
+    callbacks_list = checkpoint_callbacks + [lr_monitor, CleanProgressBar()]
     # 7. 初始化 Trainer
     trainer = pl.Trainer(
         accelerator="gpu" if torch.cuda.is_available() else "cpu",
@@ -137,9 +148,15 @@ if __name__ == '__main__':
         num_sanity_val_steps=0,  # 屏蔽训练前默认跑 2 个 val_batch 的检查
         log_every_n_steps=5,
         logger=tb_logger,
-        callbacks=checkpoint_callbacks + [lr_monitor],
+        callbacks=callbacks_list,
         benchmark=True,
     )
     
     # 若提供断点，进行续传
     trainer.fit(model, ckpt_path=args.resume if args.resume else None)
+
+    if torch.cuda.is_available() and dist.is_available() and dist.is_initialized():
+        dist.destroy_process_group()
+        
+    if local_rank == 0:
+        logger.info("🎉 实验运行结束，所有进程安全退出！")

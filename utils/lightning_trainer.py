@@ -8,6 +8,7 @@ import pytorch_lightning as pl
 import numpy as np
 from loguru import logger
 
+
 # 确保能找到项目根目录下的模块
 sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
 from datasets.crowd_drone import Crowd_Drone
@@ -17,6 +18,7 @@ from losses.post_prob import Post_Prob
 from losses.bpl import BPL_Loss
 from models.RaBiT_Model import fusion_model
 from utils.evaluation import eval_game, eval_relative
+
 
 def train_collate(batch):
     transposed_batch = list(zip(*batch))
@@ -48,7 +50,7 @@ class CrowdCountingLightningModule(pl.LightningModule):
 
         params_m = sum(p.numel() for p in self.model.parameters()) / 1e6
         logger.info(f'Model params (M): {params_m:.2f}')
-
+        self.best_metrics = {}
         self.lambda_aux_bayes = 0.5  
         self.lambda_bpl = 0.1
 
@@ -142,10 +144,11 @@ class CrowdCountingLightningModule(pl.LightningModule):
             for k, v in train_metrics.items():
                 self.log(k, v / N, on_step=False, on_epoch=True, sync_dist=True,batch_size=N)
 
-        self.log('Train/Loss_Total', total_loss, on_step=True, on_epoch=True, prog_bar=True, sync_dist=True)
+        self.log('Train/Loss_Total', total_loss, on_step=True, on_epoch=True, prog_bar=True, sync_dist=True,batch_size=N)
         return total_loss
 
     def on_train_epoch_end(self):
+        exptag = self.args.exp_tag
         # 仅主卡打印
         if self.trainer.is_global_zero:
             metrics = self.trainer.callback_metrics
@@ -157,7 +160,7 @@ class CrowdCountingLightningModule(pl.LightningModule):
             rmse = np.sqrt(metrics.get('Train/MSE_sq', torch.tensor(0.0)).item())
             re = metrics.get('Train/RE', torch.tensor(0.0)).item()
             
-            logger.info(f"[Epoch {self.current_epoch} Train] Loss: {loss:.4f} | GAME0: {g0:.3f} | GAME1: {g1:.3f} | GAME2: {g2:.3f} | GAME3: {g3:.3f} | RMSE: {rmse:.3f} | RE: {re:.4f}")
+            logger.info(f"[Epoch {self.current_epoch} Train | {exptag} ] Loss: {loss:.4f} | GAME0: {g0:.3f} | GAME1: {g1:.3f} | GAME2: {g2:.3f} | GAME3: {g3:.3f} | RMSE: {rmse:.3f} | RE: {re:.4f}")
 
     def validation_step(self, batch, batch_idx, dataloader_idx=0):
         prefix = "Test"
@@ -192,23 +195,49 @@ class CrowdCountingLightningModule(pl.LightningModule):
         self.log_dict(metrics, on_step=False, on_epoch=True, sync_dist=True, add_dataloader_idx=False, batch_size=1)
     
     def on_validation_epoch_end(self):
-        # 排除模型启动前默认的 Sanity Check 阶段
+        # 排除模型启动前的 Sanity Check 且仅在主卡执行
         if self.trainer.sanity_checking or not self.trainer.is_global_zero:
             return
             
         metrics = self.trainer.callback_metrics
-        for stage in ["Val", "Test"]:
-            g0 = metrics.get(f'{stage}/GAME0')
-            # 过滤掉填充的 inf 指标
-            if g0 is not None and g0.item() != float('inf'):
-                g1 = metrics.get(f'{stage}/GAME1').item()
-                g2 = metrics.get(f'{stage}/GAME2').item()
-                g3 = metrics.get(f'{stage}/GAME3').item()
-                rmse = np.sqrt(metrics.get(f'{stage}/MSE').item())
-                re = metrics.get(f'{stage}/RelativeError').item()
+        exptag = self.args.exp_tag
+        
+        # 遍历可能存在的阶段 (Val, Test)
+        stages = ["Val", "Test"] if self.args.dataset == 'RGBTCC' else ["Test"]
+        
+        for stage in stages:
+            curr_g0 = metrics.get(f'{stage}/GAME0')
+            
+            # 只有在非延迟验证（即非 inf）时才更新 best
+            if curr_g0 is not None and curr_g0.item() != float('inf'):
+                curr_g0_val = curr_g0.item()
+                curr_rmse = np.sqrt(metrics.get(f'{stage}/MSE').item())
+                curr_re = metrics.get(f'{stage}/RelativeError').item()
                 
-                logger.info(f"[Epoch {self.current_epoch} {stage}] GAME0: {g0.item():.3f} | GAME1: {g1:.3f} | GAME2: {g2:.3f} | GAME3: {g3:.3f} | RMSE: {rmse:.3f} | RE: {re:.4f}")
+                # 初始化该 stage 的最佳记录
+                if stage not in self.best_metrics:
+                    self.best_metrics[stage] = {
+                        'GAME0': float('inf'), 'RMSE': float('inf'), 'RE': float('inf'), 'epoch': -1
+                    }
+                
+                # 如果当前 GAME0 更优（更小），则更新全套 Best 指标
+                if curr_g0_val < self.best_metrics[stage]['GAME0']:
+                    self.best_metrics[stage].update({
+                        'GAME0': curr_g0_val,
+                        'RMSE': curr_rmse,
+                        'RE': curr_re,
+                        'epoch': self.current_epoch
+                    })
 
+                # 打印当前 Epoch 结果
+                logger.info(f"[Epoch {self.current_epoch} {stage} | {exptag}] "
+                            f"GAME0: {curr_g0_val:.3f} | RMSE: {curr_rmse:.3f} | RE: {curr_re:.4f}")
+                
+                # 打印历史最佳结果
+                best = self.best_metrics[stage]
+                logger.info(f"🏆 [Best {stage} | {exptag}] "
+                            f"GAME0: {best['GAME0']:.3f} | RMSE: {best['RMSE']:.3f} | RE: {best['RE']:.4f} "
+                            f"(at Epoch {best['epoch']})")
     def setup(self, stage=None):
         args = self.args
         if args.dataset == 'RGBTCC':

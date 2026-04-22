@@ -1,3 +1,5 @@
 output/*
+output_debug/*
 *.pyc
 *.pth
+*.log
