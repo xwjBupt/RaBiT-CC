@@ -15,7 +15,7 @@ from pytorch_lightning.callbacks import TQDMProgressBar
 torch.set_float32_matmul_precision('high') 
 
 # 导入上面的 LightningModule
-from utils.lightning_trainer import CrowdCountingLightningModule 
+from lightning_trainer import CrowdCountingLightningModule 
 
 # === 新增：自定义纯净版进度条 ===
 class CleanProgressBar(TQDMProgressBar):
@@ -103,7 +103,7 @@ if __name__ == '__main__':
                 logger.error(f"❌ 发生未知错误，跳过 Git 记录: {e}")
         # ==========================================================
 
-        logger.info(f"======== Starting experiment: {sub_dir} ========")
+        logger.info(f"\n\n\n>>>>>>>>>> Starting experiment: {sub_dir} <<<<<<<<<<\n\n\n")
         logger.info("================ Configurations ================")
         for k, v in args.__dict__.items():
             logger.info(f"{k}: {v}")
@@ -159,4 +159,4 @@ if __name__ == '__main__':
         dist.destroy_process_group()
         
     if local_rank == 0:
-        logger.info("🎉 实验运行结束，所有进程安全退出！")
+        logger.info(f"\n\n\n>>>>>>>>>> Ending experiment: {sub_dir} <<<<<<<<<<\n\n\n")
