@@ -26,7 +26,7 @@ class CleanProgressBar(TQDMProgressBar):
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Train with PyTorch Lightning')
-    parser.add_argument('--exp-tag', default='rabbit_rgbtcc', help='实验标签')
+    parser.add_argument('--exp-tag', default='rabbit', help='实验标签')
     parser.add_argument('--dataset', default='RGBTCC', choices=['RGBTCC', 'DroneRGBT'])
     parser.add_argument('--data-dir', default='/home/wjx/data/CrowdCounting/RGBTCC_Pro')    
     parser.add_argument('--lr', type=float, default=3e-5)
@@ -69,7 +69,7 @@ if __name__ == '__main__':
         args.val_start = 1
 
     # 1. 统一构建输出路径 (保持原有格式: exp_tag@时间戳)
-    sub_dir = f"{args.exp_tag}@{datetime.now().strftime('%y%m%d-%H%M%S')}"
+    sub_dir = f"{args.exp_tag}_{args.dataset}@{datetime.now().strftime('%y%m%d-%H%M%S')}"
     args.exp_tag = sub_dir
     final_save_dir = os.path.join(root, sub_dir)
     local_rank = int(os.environ.get("LOCAL_RANK", 0))

@@ -7,7 +7,7 @@ from torch.utils.data import DataLoader
 import pytorch_lightning as pl
 import numpy as np
 from loguru import logger
-
+from argparse import Namespace
 
 # 确保能找到项目根目录下的模块
 sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
@@ -38,6 +38,9 @@ def train_collate(batch):
 class CrowdCountingLightningModule(pl.LightningModule):
     def __init__(self, args):
         super().__init__()
+        # 【关键修复】：兼容从 ckpt 加载时 args 变成 dict 的情况
+        if isinstance(args, dict):
+            args = Namespace(**args)
         self.save_hyperparameters(args)
         self.args = args
 
