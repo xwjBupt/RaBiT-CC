@@ -4,3 +4,5 @@ output_debug/*
 *.pth
 *.log
 *.xlsx
+*bak*
+*play*
